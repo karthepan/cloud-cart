@@ -148,5 +148,7 @@ Create an EC2 instance role (`CloudCart-EC2-Role`) with permissions for[cite: 9]
 
 Upload cloudcart-deploy.zip and deploy[cite: 9]. Upon startup, dbInit.js will automatically initialize the database schema and seed the storefront catalog.
 
+---
+
 ## Monitoring & Observability
 Application logs are automatically routed to Amazon CloudWatch Logs under /aws/elasticbeanstalk/CloudCart-Env/var/log/web.stdout.log via .ebextensions/01_cloudwatch.config. You can monitor database seeding ([DB-INIT]), order ingestion ([ORDER CREATED]), background worker transitions ([WORKER]), and alert dispatches ([SNS]) in real time directly from the CloudWatch console.

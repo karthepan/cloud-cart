@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudCart — Next-Gen Cloud E-Commerce</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Architecture Banner -->
+  <div class="aws-banner">
+    <span>⚡ Powered by AWS Microservices: <strong>Elastic Beanstalk</strong> • <strong>RDS MySQL</strong> • <strong>DynamoDB</strong> • <strong>SQS</strong> • <strong>SNS</strong> • <strong>CloudWatch</strong></span>
+  </div>
+
+  <!-- Navigation Header -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <div class="logo">
+        <span class="logo-icon">☁️</span>
+        <span class="logo-text">Cloud<span>Cart</span></span>
+      </div>
+      <nav class="nav-links">
+        <a href="#catalog-section">Catalog</a>
+        <a href="#tracker-section">Live Order Tracker</a>
+      </nav>
+      <button class="cart-btn" id="open-cart-btn">
+        <span>🛒 Bag</span>
+        <span class="cart-badge" id="cart-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container hero-content">
+      <span class="pill-badge">AWS Event-Driven Architecture</span>
+      <h1>Curated Tech Essentials.<br/>Fulfilled Asynchronously in the Cloud.</h1>
+      <p>Experience instant checkout powered by Amazon SQS queues, real-time state persistence in DynamoDB, relational integrity on RDS MySQL, and instant SNS notifications.</p>
+      <div class="hero-actions">
+        <a href="#catalog-section" class="btn btn-primary">Explore Collection</a>
+        <a href="#tracker-section" class="btn btn-secondary">Track Live Order</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Catalog Section -->
+  <main class="container" id="catalog-section">
+    <div class="section-header">
+      <div>
+        <h2>Featured Hardware</h2>
+        <p class="subtitle">Fetched dynamically from Amazon RDS (MySQL)</p>
+      </div>
+      <button class="btn-outline" id="refresh-catalog-btn">↻ Refresh Stock</button>
+    </div>
+
+    <div id="product-grid" class="product-grid">
+      <div class="loader">Loading catalog from Amazon RDS...</div>
+    </div>
+  </main>
+
+  <!-- Live Order Status Tracking Dashboard -->
+  <section class="tracker-section" id="tracker-section">
+    <div class="container">
+      <div class="tracker-card">
+        <div class="tracker-header">
+          <div>
+            <span class="pill-badge">Real-Time State Engine</span>
+            <h2>Live Order Fulfillment Telemetry</h2>
+            <p>Polls low-latency state transitions directly from <strong>Amazon DynamoDB</strong> as the <strong>AWS SQS</strong> worker processes your order.</p>
+          </div>
+          <div class="tracker-search">
+            <input type="text" id="track-input" placeholder="Enter Order ID (e.g. CC-1A2B3C4D)" />
+            <button class="btn btn-primary" id="track-btn">Track Order</button>
+          </div>
+        </div>
+
+        <div id="tracker-display" class="tracker-display hidden">
+          <div class="tracker-meta">
+            <div><strong>Order ID:</strong> <span id="t-order-id"></span></div>
+            <div><strong>Customer:</strong> <span id="t-customer"></span></div>
+            <div><strong>Total:</strong> $<span id="t-total"></span></div>
+            <div><strong>Data Source:</strong> <span class="source-tag" id="t-source"></span></div>
+          </div>
+
+          <!-- Progress Stepper -->
+          <div class="stepper">
+            <div class="step" data-step="QUEUED">
+              <div class="step-circle">1</div>
+              <div class="step-label">SQS Queued</div>
+            </div>
+            <div class="step" data-step="INVENTORY_VERIFIED">
+              <div class="step-circle">2</div>
+              <div class="step-label">RDS Stock Verified</div>
+            </div>
+            <div class="step" data-step="PAYMENT_PROCESSED">
+              <div class="step-circle">3</div>
+              <div class="step-label">Payment Processed</div>
+            </div>
+            <div class="step" data-step="SHIPPED">
+              <div class="step-circle">4</div>
+              <div class="step-label">Shipped & SNS Sent</div>
+            </div>
+          </div>
+
+          <!-- Event Log Timeline -->
+          <div class="timeline-box">
+            <h4>DynamoDB State Transition Log</h4>
+            <ul id="t-timeline" class="timeline-list"></ul>
+          </div>
+        </div>
+
+        <!-- Recent Orders Quick List -->
+        <div class="recent-orders-bar">
+          <span>Recent Orders (Click to Track):</span>
+          <div id="recent-orders-list" class="recent-chips"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide-over Cart Drawer -->
+  <div id="cart-overlay" class="overlay hidden"></div>
+  <aside id="cart-drawer" class="cart-drawer">
+    <div class="cart-header">
+      <h3>Your Shopping Bag</h3>
+      <button id="close-cart-btn" class="close-btn">&times;</button>
+    </div>
+    <div id="cart-items" class="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-total">
+        <span>Subtotal</span>
+        <strong id="cart-subtotal">$0.00</strong>
+      </div>
+      <button id="proceed-checkout-btn" class="btn btn-primary full-width">Proceed to Checkout</button>
+    </div>
+  </aside>
+
+  <!-- Checkout Modal -->
+  <div id="checkout-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Express Cloud Checkout</h3>
+        <button id="close-modal-btn" class="close-btn">&times;</button>
+      </div>
+      <form id="checkout-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="cust-name" required placeholder="Alex Rivera" />
+        </div>
+        <div class="form-group">
+          <label>Email Address (for SNS Order Alerts)</label>
+          <input type="email" id="cust-email" required placeholder="alex@university.edu" />
+        </div>
+        <div class="checkout-summary">
+          <p>Submitting this order writes transactional records to <strong>RDS MySQL</strong>, initializes state in <strong>DynamoDB</strong>, and dispatches an async job to <strong>Amazon SQS</strong>.</p>
+        </div>
+        <button type="submit" id="submit-order-btn" class="btn btn-primary full-width">Place Order Now</button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p>CloudCart E-Commerce Microservices Project • Built with Node.js, Express & AWS SDK v3</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

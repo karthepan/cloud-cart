@@ -89,3 +89,64 @@ cloudcart/
 ├── .env.example               # Template for required environment variables
 ├── package.json               # Node.js dependencies and start scripts
 └── Procfile                   # Elastic Beanstalk process execution definition
+
+## Database Design (Polyglot Persistence)
+
+### 1. Amazon RDS MySQL (`cloudcart_db`)[cite: 5]
+* **`products`**: `id` (PK), `name`, `category`, `price`, `stock`, `image_url`, `description`[cite: 5]
+* **`orders`**: `order_id` (PK), `customer_name`, `customer_email`, `total_amount`, `status`, `created_at`[cite: 5]
+* **`order_items`**: `id` (PK), `order_id` (FK → `orders`), `product_id` (FK → `products`), `quantity`, `price`[cite: 5]
+
+### 2. Amazon DynamoDB (`CloudCart-Order-State`)[cite: 5]
+* **Partition Key:** `orderId` (String)[cite: 5]
+* **Attributes:** `customerName`, `customerEmail`, `totalAmount`, `currentStatus`, `createdAt`, `updatedAt`, `statusHistory` (List of timestamped state transition maps)[cite: 5]
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description | Data Store |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/products` | Fetches available product catalog and live stock counts[cite: 2, 18] | RDS MySQL[cite: 2] |
+| `GET` | `/api/orders` | Retrieves recent orders for quick status tracking chips[cite: 25] | RDS MySQL[cite: 2] |
+| `POST` | `/api/orders` | Creates an order, logs initial state, and queues SQS job[cite: 1, 2, 22] | RDS MySQL + DynamoDB + SQS[cite: 1, 2] |
+| `GET` | `/api/orders/:id/track` | Polls real-time fulfillment progress and transition history[cite: 2, 23] | DynamoDB[cite: 2, 14] |
+
+---
+
+## AWS Deployment Guide (Zero-Terminal Setup)
+
+CloudCart is engineered for 100% AWS Management Console deployment—no `.pem` key pairs or SSH commands are required.
+
+### 1. IAM Roles Setup
+Create an EC2 instance role (`CloudCart-EC2-Role`) with permissions for[cite: 9]:
+* `AWSElasticBeanstalkWebTier`[cite: 9]
+* Amazon SQS, Amazon SNS, Amazon DynamoDB, and CloudWatch Logs[cite: 9]
+
+### 2. Database & Storage Setup
+1. **DynamoDB:** Create an on-demand table named `CloudCart-Order-State` with Partition Key `orderId` (`String`)[cite: 8, 9].
+2. **RDS MySQL:** Launch a MySQL instance (`cloudcart-db`, e.g., `db.t4g.micro`)[cite: 7, 9] and configure its VPC Security Group (`CloudCart-RDS-SG`) to allow inbound TCP traffic on port `3306` from your Elastic Beanstalk security group[cite: 3, 9].
+
+### 3. Messaging & Notification Setup
+1. **SQS:** Create a Standard Queue named `CloudCart-Order-Queue`[cite: 9, 10] and copy its Queue URL.
+2. **SNS:** Create a Standard Topic named `CloudCart-Order-Alerts`, add an Email subscription, and confirm the subscription via email[cite: 9, 11].
+
+### 4. Elastic Beanstalk Deployment
+1. Zip the project root contents into `cloudcart-deploy.zip` (**exclude** `node_modules`)[cite: 9].
+2. Create a new **Node.js** Elastic Beanstalk environment (`CloudCart-Env`) and attach `CloudCart-EC2-Role`[cite: 9, 10].
+3. Configure the following **Environment Properties** in Elastic Beanstalk[cite: 9]:
+   ```env
+   AWS_REGION=us-east-1
+   DB_HOST=<your-rds-instance-endpoint>
+   DB_PORT=3306
+   DB_USER=admin
+   DB_PASSWORD=<your-rds-password>
+   DB_NAME=cloudcart_db
+   DYNAMODB_TABLE_NAME=CloudCart-Order-State
+   SQS_QUEUE_URL=<your-sqs-queue-url>
+   SNS_TOPIC_ARN=<your-sns-topic-arn>
+
+Upload cloudcart-deploy.zip and deploy[cite: 9]. Upon startup, dbInit.js will automatically initialize the database schema and seed the storefront catalog.
+
+## Monitoring & Observability
+Application logs are automatically routed to Amazon CloudWatch Logs under /aws/elasticbeanstalk/CloudCart-Env/var/log/web.stdout.log via .ebextensions/01_cloudwatch.config. You can monitor database seeding ([DB-INIT]), order ingestion ([ORDER CREATED]), background worker transitions ([WORKER]), and alert dispatches ([SNS]) in real time directly from the CloudWatch console.
